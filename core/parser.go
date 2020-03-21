@@ -18,8 +18,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/unidoc/unipdf/v3/common"
-	"github.com/unidoc/unipdf/v3/core/security"
+	"github.com/lu4p/unipdf/v3/common"
+	"github.com/lu4p/unipdf/v3/core/security"
 )
 
 // Regular Expressions for parsing and identifying object signatures.

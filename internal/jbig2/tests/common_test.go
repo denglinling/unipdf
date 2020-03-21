@@ -16,12 +16,12 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/unidoc/unipdf/v3/common"
-	"github.com/unidoc/unipdf/v3/contentstream"
-	"github.com/unidoc/unipdf/v3/core"
-	"github.com/unidoc/unipdf/v3/model"
+	"github.com/lu4p/unipdf/v3/common"
+	"github.com/lu4p/unipdf/v3/contentstream"
+	"github.com/lu4p/unipdf/v3/core"
+	"github.com/lu4p/unipdf/v3/model"
 
-	"github.com/unidoc/unipdf/v3/internal/jbig2"
+	"github.com/lu4p/unipdf/v3/internal/jbig2"
 )
 
 type extractedImage struct {

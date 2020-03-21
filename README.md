@@ -99,28 +99,4 @@ These activities include:
 Please see [pricing](https://unidoc.io/unipdf/#unipdf-pricing) to purchase a commercial license or contact sales at sales@unidoc.io
 for more info.
 
-## Getting Rid of the Watermark - Get a License
-Out of the box - unipdf is unlicensed and outputs a watermark on all pages, perfect for prototyping.
-To use unipdf in your projects, you need to get a license.
-
-Get your license on [https://unidoc.io](https://unidoc.io).
-
-The easiest way to load your license is through environment variables, for example:
-```bash
-export UNIPDF_CUSTOMER_NAME=UniDoc
-export UNIPDF_LICENSE_PATH=/path/to/licenses/UniDoc.txt
-```
-
-Alternatively you can load the license in code, simply do:
-```go
-licenseKey := "... your license here ..."
-customerName := `name of license holder`
-
-err := license.SetLicenseKey(licenseKey, customerName)
-if err != nil {
-    fmt.Printf("Error loading license: %v\n", err)
-    os.Exit(1)
-}
-```
-
 [contributing]: CONTRIBUTING.md

@@ -13,6 +13,7 @@ import (
 	"strconv"
 
 	"github.com/lu4p/unipdf/v3/common"
+	"github.com/lu4p/unipdf/v3/core"
 	"github.com/lu4p/unipdf/v3/model"
 )
 
@@ -62,7 +63,14 @@ type Creator struct {
 	// Forms.
 	acroForm *model.PdfAcroForm
 
+	// Page labels.
+	pageLabels core.PdfObject
+
+	// Optimizer.
 	optimizer model.Optimizer
+
+	// Fonts that have been enabled for subsetting prior to write.
+	subsetFonts []*model.PdfFont
 
 	// Default fonts used by all components instantiated through the creator.
 	defaultFontRegular *model.PdfFont
@@ -80,6 +88,14 @@ func (c *Creator) SetForms(form *model.PdfAcroForm) error {
 // generation of outlines done by the creator for the relevant components.
 func (c *Creator) SetOutlineTree(outlineTree *model.PdfOutlineTreeNode) {
 	c.externalOutline = outlineTree
+}
+
+// SetPageLabels adds the specified page labels to the PDF file generated
+// by the creator. See section 12.4.2 "Page Labels" (p. 382 PDF32000_2008).
+// NOTE: for existing PDF files, the page label ranges object can be obtained
+// using the model.PDFReader's GetPageLabels method.
+func (c *Creator) SetPageLabels(pageLabels core.PdfObject) {
+	c.pageLabels = pageLabels
 }
 
 // FrontpageFunctionArgs holds the input arguments to a front page drawing function.
@@ -647,6 +663,24 @@ func (c *Creator) Write(ws io.Writer) error {
 		pdfWriter.AddOutlineTree(&c.outline.ToPdfOutline().PdfOutlineTreeNode)
 	}
 
+	// Page labels.
+	if c.pageLabels != nil {
+		if err := pdfWriter.SetPageLabels(c.pageLabels); err != nil {
+			common.Log.Debug("ERROR: Could not set page labels: %v", err)
+			return err
+		}
+	}
+
+	if c.subsetFonts != nil {
+		for _, font := range c.subsetFonts {
+			err := font.SubsetRegistered()
+			if err != nil {
+				common.Log.Debug("ERROR: Could not subset font: %v", err)
+				return err
+			}
+		}
+	}
+
 	// Pdf Writer access hook. Can be used to encrypt, etc. via the PdfWriter instance.
 	if c.pdfWriterAccessFunc != nil {
 		err := c.pdfWriterAccessFunc(&pdfWriter)
@@ -687,6 +721,13 @@ func (c *Creator) Write(ws io.Writer) error {
 //
 func (c *Creator) SetPdfWriterAccessFunc(pdfWriterAccessFunc func(writer *model.PdfWriter) error) {
 	c.pdfWriterAccessFunc = pdfWriterAccessFunc
+}
+
+// EnableFontSubsetting enables font subsetting for `font` when the creator output is written to file.
+// Embeds only the subset of the runes/glyphs that are actually used to display the file.
+// Subsetting can reduce the size of fonts significantly.
+func (c *Creator) EnableFontSubsetting(font *model.PdfFont) {
+	c.subsetFonts = append(c.subsetFonts, font)
 }
 
 // WriteToFile writes the Creator output to file specified by path.

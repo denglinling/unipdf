@@ -682,30 +682,25 @@ func TestParagraphChinese(t *testing.T) {
 	}
 
 	font, err := model.NewCompositePdfFontFromTTFFile(testWts11TTFFile)
-	if err != nil {
-		t.Errorf("Fail: %v\n", err)
-		return
-	}
+	require.NoError(t, err)
+
+	// Enable font subsetting for the composite font - embed only needed glyphs
+	// (much smaller file size for large fonts).
+	creator.EnableFontSubsetting(font)
 
 	for _, line := range lines {
 		p := creator.NewParagraph(line)
-
 		p.SetFont(font)
 
 		err = creator.Draw(p)
-		if err != nil {
-			t.Errorf("Fail: %v\n", err)
-			return
-		}
+		require.NoError(t, err)
 	}
 
 	testWriteAndRender(t, creator, "2_p_nihao.pdf")
 	fname := tempFile("2_p_nihao.pdf")
 	st, err := os.Stat(fname)
-	if err != nil {
-		t.Errorf("Fail: %v\n", err)
-		return
-	}
+	require.NoError(t, err)
+
 	t.Logf("output size: %d (%d MB)", st.Size(), st.Size()/1024/1024)
 }
 
@@ -714,10 +709,10 @@ func TestParagraphUnicode(t *testing.T) {
 	creator := New()
 
 	font, err := model.NewCompositePdfFontFromTTFFile(testFreeSansTTFFile)
-	if err != nil {
-		t.Errorf("Fail: %v\n", err)
-		return
-	}
+	require.NoError(t, err)
+
+	// Enable font subsetting for the composite font - embed only needed glyphs.
+	creator.EnableFontSubsetting(font)
 
 	texts := []string{
 		"Testing of letters \u010c,\u0106,\u0160,\u017d,\u0110",
@@ -755,10 +750,7 @@ func TestParagraphUnicode(t *testing.T) {
 		p.SetFont(font)
 
 		err = creator.Draw(p)
-		if err != nil {
-			t.Errorf("Fail: %v\n", err)
-			return
-		}
+		require.NoError(t, err)
 	}
 
 	testWriteAndRender(t, creator, "2_p_multi.pdf")
@@ -2978,6 +2970,60 @@ func TestCreatorStable(t *testing.T) {
 	if h1 != h2 {
 		t.Fatal("output is not stable")
 	}
+}
+
+func TestPageLabels(t *testing.T) {
+	// Read input file.
+	f, err := os.Open(testPdfTemplatesFile1)
+	require.NoError(t, err)
+	defer f.Close()
+
+	reader, err := model.NewPdfReader(f)
+	require.NoError(t, err)
+	numPages, err := reader.GetNumPages()
+	require.NoError(t, err)
+
+	// Add input file pages to a new creator instance.
+	c := New()
+	nums := core.MakeArray()
+	for i := 0; i < numPages; i++ {
+		page, err := reader.GetPage(i + 1)
+		require.NoError(t, err)
+
+		err = c.AddPage(page)
+		require.NoError(t, err)
+
+		// Generate a page range for each page.
+		// If page index is even, show page label using Roman uppercase numerals.
+		// Otherwise, show page label using decimal Arabic numerals.
+		labelStyle := "R"
+		if i%2 != 0 {
+			labelStyle = "D"
+		}
+		pageRange := core.MakeDict()
+		pageRange.Set(*core.MakeName("S"), core.MakeName(labelStyle))
+		nums.Append(core.MakeInteger(int64(i)))
+		nums.Append(pageRange)
+	}
+
+	// Create page labels dictionary and add it to the creator.
+	genPageLabels := core.MakeDict()
+	genPageLabels.Set(*core.MakeName("Nums"), nums)
+	c.SetPageLabels(genPageLabels)
+
+	// Write output file to buffer.
+	outBuf := bytes.NewBuffer(nil)
+	err = c.Write(outBuf)
+	require.NoError(t, err)
+
+	// Read output file.
+	reader, err = model.NewPdfReader(bytes.NewReader(outBuf.Bytes()))
+	require.NoError(t, err)
+
+	// Retrieve page labels and compare them to the generated page labels.
+	pageLabels, err := reader.GetPageLabels()
+	require.NoError(t, err)
+	require.Equal(t, core.EqualObjects(genPageLabels, pageLabels), true)
 }
 
 var errRenderNotSupported = errors.New("rendering pdf is not supported on this system")
